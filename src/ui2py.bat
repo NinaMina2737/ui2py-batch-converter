@@ -1,49 +1,68 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
 
-set uiext=.ui
-set pyext=.py
+echo ------------------------------------------------------------
+set "appdata_dir=%USERPROFILE%\AppData"
+set "pyside2_uic_path="
+for /d %%I in ("%appdata_dir%\Local\Programs\Python\Python*") do (
+    if exist "%%~fI\Scripts\pyside2-uic.exe" (
+        set "pyside2_uic_path=%%~fI\Scripts\pyside2-uic.exe"
+        goto :found_pyside2_uic
+    )
+)
+for /r "%cd%" %%I in (pyside2-uic.exe) do (
+    if exist "%%~fI" (
+        set "pyside2_uic_path=%%~fI"
+        goto :found_pyside2_uic
+    )
+)
+echo pyside2-uic.exe not found in %appdata_dir%\Local\Programs\Python\Python*
+echo ------------------------------------------------------------
+goto :get_pyside2_uic_path
 
-set pyside2-uic=env\Scripts\pyside2-uic.exe
-if not exist %pyside2-uic% call :get_pyside2_uic_path
+:get_pyside2_uic_path
+for /f "delims=" %%I in ('powershell.exe -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.InitialDirectory = (Get-Item -Path '.\').FullName; $f.Filter = 'Pyside2 uic executable (pyside2-uic.exe)|pyside2-uic.exe'; $f.Title = 'Select pyside2-uic.exe'; $f.ShowDialog() | Out-Null; $f.FileName"') do set "pyside2_uic_path=%%I"
+if not defined pyside2_uic_path (
+    echo pyside2-uic.exe not found. Exiting.
+    echo ------------------------------------------------------------
+    goto :end
+)
 
-for %%f in (%*) do (
-    set filename=%%~nf
-    set ext=%%~xf
-    if /i !ext! == !uiext! (
-        echo Converting !filename!!ext! to !filename!!pyext!
-        %pyside2-uic% %%f -o !filename!!pyext!
+:found_pyside2_uic
+echo pyside2-uic.exe found: %pyside2_uic_path%
+echo ------------------------------------------------------------
+set "ui_files=%*"
+echo UI files: %ui_files%
+echo ------------------------------------------------------------
+if not defined ui_files (
+    for /f "delims=" %%I in ('powershell.exe -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.InitialDirectory = (Get-Item -Path '.\').FullName; $f.Filter = 'UI Files (*.ui)|*.ui'; $f.Multiselect = $true; $f.Title = 'Select UI files'; $f.ShowDialog() | Out-Null; $f.FileNames"') do set "ui_files=!ui_files! "%%I""
+)
+if not defined ui_files (
+    echo UI files not found. Exiting.
+    echo ------------------------------------------------------------
+    goto :end
+)
+
+:found_ui_files
+echo UI files found: %ui_files%
+echo ------------------------------------------------------------
+for %%I in (%ui_files%) do (
+    set "ui_file=%%~fI"
+    set "py_file=!ui_file:.ui=.py!"
+
+    echo Converting !ui_file! to !py_file!
+    echo ------------------------------------------------------------
+    "%pyside2_uic_path%" "!ui_file!" -o "!py_file!"
+
+    if errorlevel 1 (
+        echo Failed to convert !ui_file! to Python file. Skipping.
+        echo ------------------------------------------------------------
+    ) else (
+        echo Successfully converted !ui_file! to Python file: !py_file!
+        echo ------------------------------------------------------------
     )
 )
 
-echo Done!
+:end
 pause
-goto :eof
-
-:get_pyside2_uic_path
-set "dialogTitle=Select pyside2-uic.exe"
-set "fileFilter=Pyside2 uic executable (pyside2-uic.exe)|pyside2-uic.exe"
-set "initialDir=%~dp0env\Scripts"
-set "pyside2_uic_path="
-set "vbs=%temp%\pyside2_uic_path.vbs"
-
-REM Create a shell object and browse for the folder containing pyside2-uic.exe
->"%vbs%" echo Set objShell = CreateObject^("Shell.Application"^)
->>"%vbs%" echo Set objFolder = objShell.BrowseForFolder^(0, dialogTitle, ^&H4000, initialDir^)
-
-REM If the folder is not empty, set pyside2_uic_path to the path of pyside2-uic.exe
->>"%vbs%" echo If Not objFolder Is Nothing Then
->>"%vbs%" echo     Set objFolderItem = objFolder.Self
->>"%vbs%" echo     pyside2_uic_path = objFolderItem.Path ^& "\pyside2-uic.exe"
->>"%vbs%" echo End If
-
-REM Run the VBScript and set pyside2-uic to the path of pyside2-uic.exe
-for /f "delims=" %%I in ('cscript //nologo "%vbs%"') do set "pyside2_uic_path=%%I"
-del "%vbs%"
-if not defined pyside2_uic_path (
-    echo pyside2-uic.exe not found. Exiting.
-    pause
-    exit /b 1
-)
-set "pyside2-uic=%pyside2_uic_path%"
-goto :eof
+exit /b 1
