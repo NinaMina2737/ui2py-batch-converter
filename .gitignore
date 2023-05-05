@@ -1,0 +1,5 @@
+# virtualenv
+env/
+
+# ui files
+*.ui
