@@ -12,7 +12,7 @@
 
 ## インストール
 
-[最新リリース](/releases/latest)をダウンロードし、アーカイブを展開します。
+[最新リリース](https://github.com/NinaMina2737/ui2py-batch-converter/releases/latest)をダウンロードし、アーカイブを展開します。
 
 ## 必要条件
 
