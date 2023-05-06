@@ -12,7 +12,7 @@
 
 ## Installation
 
-Download the [latest release](/releases/latest) and extract the archive.
+Download the [latest release](https://github.com/NinaMina2737/ui2py-batch-converter//releases/latest) and extract the archive.
 
 ## Prerequisites
 
